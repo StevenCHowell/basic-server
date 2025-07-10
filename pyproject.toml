@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "black>=25.1.0",
+    "celery>=5.5.3",
     "flake8>=7.3.0",
     "flask>=3.1.1",
     "ipykernel>=6.29.5",
@@ -15,5 +16,6 @@ dependencies = [
     "pandas>=2.3.1",
     "pre-commit>=4.2.0",
     "pymongo>=4.13.2",
+    "pypdf2>=3.0.1",
     "pytest>=8.4.1",
 ]
