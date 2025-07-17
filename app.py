@@ -1,22 +1,24 @@
+import time
+from pathlib import Path
+
 import PyPDF2
 from celery import Celery
 from flask import Flask, jsonify, request, send_file
-from Pathlib import Path
 from werkzeug.utils import secure_filename
 
 # Initialize Flask app
 app = Flask(__name__)
 
 # Configure Celery
-app.config["CELERY_BROCKER_URL"] = "redis://localhost:6379/0"
+app.config["CELERY_BROKER_URL"] = "redis://localhost:6379/0"
 app.config["CELERY_RESULT_BACKEND"] = "redis://localhost:6379/0"
 celery = Celery(app.name, broker=app.config["CELERY_BROKER_URL"])
 celery.conf.update(app.config)
 
 # Folder to store uploaded and processed files
-# TODO: replace this with S3 storage
+# TODO: replace this with S3 storage or some alternative storage
 UPLOAD_FOLDER = Path("uploads")
-PROCESSED_FOLDER = Path("annotated")
+PROCESSED_FOLDER = Path("processed")
 UPLOAD_FOLDER.mkdir(exist_ok=True)
 PROCESSED_FOLDER.mkdir(exist_ok=True)
 
@@ -41,10 +43,11 @@ def upload_file():
 
 @celery.task(bind=True)
 def process_pdf(self, fpath):
-    self.update_state(state="PROCESSING", meta={"progress": 0})
+    self.update_state(state="PROCESSING", meta={"progress": 50})
+    time.sleep(10)  # simulated processing time
     output_fpath = manipulate_pdf(fpath)
     self.update_state(state="COMPLETED", meta={"progress": 100})
-    return {"annotated_file": str(output_fpath)}
+    return {"processed_file": str(output_fpath)}
 
 
 def manipulate_pdf(fpath):
@@ -68,14 +71,19 @@ def manipulate_pdf(fpath):
 @app.route("/status/<task_id>", methods=["GET"])
 def task_status(task_id):
     task = process_pdf.AsyncResult(task_id)
-    if task.state == "PENDING":
-        response = {"state": task.state, "progress": 0}
-    elif task.state != "FAILURE":
-        response = {"state": task.state, "progress": task.info.get("progress", 0)}
-        if "processed_file" in task.info:  # confirm this
+    if task.state != "FAILURE":
+        response = {
+            "state": task.state,
+            "progress": task.info.get("progress", 0),
+        }
+        if "processed_file" in task.info:
             response["processed_file"] = task.info["processed_file"]
     else:
-        response = {"state": task.state, "progress": 0, "error": str(task.info)}
+        response = {
+            "state": task.state,
+            "progress": task.info.get("progress", 0),
+            "error": str(task.info),
+        }
     return jsonify(response)
 
 

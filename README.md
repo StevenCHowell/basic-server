@@ -29,3 +29,71 @@ Then configure the [isort](https://pycqa.github.io/isort/), [black](https://blac
 ```bash
 pre-commit install
 ```
+
+## Backend Flask Server
+
+### Redis Server
+
+The docker run command below exposes redis-server on port 6379 and RedisInsight on port 8001. You can use RedisInsight by pointing your browser to http://localhost:8001.
+
+```bash
+# install
+$ docker run -d --name redis-stack -p 6379:6379 -p 8001:8001 redis/redis-stack:latest
+```
+
+### Celery Worker
+
+Start the Celery worker, for handling background tasks:
+
+```bash
+celery -A app.celery worker --loglevel=info
+```
+
+### Flask Application
+
+Run the Flask application by running the command:
+
+```bash
+python app.py
+```
+
+### Upload a File
+
+You can upload a test file as follows:
+
+```bash
+$ curl -X POST -F "file=@path/to/your/file.pdf" http://localhost:5000/upload
+
+{
+  "task_id": "3f58dc79-e66e-4a0f-8538-e5c414343733"
+}
+```
+
+If successful, you should get a return value containing the task ID, as shown.
+
+
+### Check the Status
+
+You can check the status of the processing using the returned task ID by running:
+
+```bash
+$ curl http://localhost:5000/status/3f58dc79-e66e-4a0f-8538-e5c414343733
+
+{
+  "progress": 0,
+  "state": "SUCCESS"
+}
+```
+
+The above example illustrates a successful run. If the process has not yet completed, the response would look more like the following:
+
+```bash
+{
+    "state": "PROCESSING",
+    "progress": 50,
+    "annotated_file": null
+}
+
+### Downloading the Processed File
+
+Once the task has completed, the status...
